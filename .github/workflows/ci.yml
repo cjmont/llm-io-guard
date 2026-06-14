@@ -49,7 +49,7 @@ jobs:
           cache-dependency-path: ${{ env.PACKAGE_DIR }}/package-lock.json
       - name: Install deps
         working-directory: ${{ env.PACKAGE_DIR }}
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Build native addon (debug)
         working-directory: ${{ env.PACKAGE_DIR }}
         run: npm run build:rust:debug

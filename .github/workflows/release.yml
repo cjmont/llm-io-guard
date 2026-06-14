@@ -45,7 +45,7 @@ jobs:
           key: ${{ matrix.target }}
       - name: Install deps
         working-directory: ${{ env.PACKAGE_DIR }}
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Build prebuilt addon
         working-directory: ${{ env.PACKAGE_DIR }}
         run: >-
@@ -91,7 +91,7 @@ jobs:
           test "$TAG" = "$PKG" || { echo "::error::tag v$TAG != package version $PKG"; exit 1; }
       - name: Install deps
         working-directory: ${{ env.PACKAGE_DIR }}
-        run: npm ci
+        run: npm install --no-audit --no-fund
       - name: Download prebuilt artifacts
         uses: actions/download-artifact@v4
         with:
