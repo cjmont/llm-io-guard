@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  PACKAGE_DIR: packages/llm-io-guard
+
+jobs:
+  build:
+    name: Prebuild ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            cross: true
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-apple-darwin # cross-compiled from Apple Silicon
+            os: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ env.PACKAGE_DIR }}/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install deps
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: npm ci
+      - name: Build prebuilt addon
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: >-
+          npx napi build --release --platform
+          --target ${{ matrix.target }}
+          ${{ matrix.cross && '--use-napi-cross' || '' }}
+          --js-package-name llm-io-guard
+          --manifest-path ../../crates/llm-io-guard-napi/Cargo.toml
+          --js binding.js --dts binding.d.ts --output-dir .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.target }}
+          path: ${{ env.PACKAGE_DIR }}/*.node
+          if-no-files-found: error
+
+  publish:
+    name: Sign & publish
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+          cache-dependency-path: ${{ env.PACKAGE_DIR }}/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "latest"
+      - uses: sigstore/cosign-installer@v3
+      - name: Verify tag matches package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
+          test "$TAG" = "$PKG" || { echo "::error::tag v$TAG != package version $PKG"; exit 1; }
+      - name: Install deps
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: npm ci
+      - name: Download prebuilt artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: bindings-*
+          merge-multiple: true
+      - name: Place binaries into platform packages
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: npx napi artifacts --npm-dir npm -d ../../artifacts
+      - name: Build WASM
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: npm run build:wasm
+      - name: Build TypeScript
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: npm run build:ts
+      - name: Sign prebuilt binaries (cosign keyless)
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: |
+          for node_file in npm/*/*.node; do
+            cosign sign-blob --yes \
+              --output-signature "${node_file}.sig" \
+              --output-certificate "${node_file}.pem" \
+              "${node_file}"
+          done
+      - name: Create signed GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.PACKAGE_DIR }}/npm/*/*.node
+            ${{ env.PACKAGE_DIR }}/npm/*/*.node.sig
+            ${{ env.PACKAGE_DIR }}/npm/*/*.node.pem
+          generate_release_notes: true
+      - name: Publish platform packages (with provenance)
+        working-directory: ${{ env.PACKAGE_DIR }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          for dir in npm/*/; do
+            npm publish "$dir" --access public
+          done
+      - name: Publish meta package (with provenance)
+        working-directory: ${{ env.PACKAGE_DIR }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: npm publish --access public

@@ -1,0 +1,41 @@
+{
+  "name": "llm-io-guard-linux-arm64-gnu",
+  "version": "0.1.0",
+  "cpu": [
+    "arm64"
+  ],
+  "main": "llm-io-guard.linux-arm64-gnu.node",
+  "files": [
+    "llm-io-guard.linux-arm64-gnu.node"
+  ],
+  "description": "Offline, in-process input/output safety guard for LLM apps (PII vault, prompt-injection, secrets, malicious URLs, package hallucination). Rust core, Node (napi) + edge/browser (WASM). Defense-in-depth, not a guarantee.",
+  "keywords": [
+    "llm",
+    "ai",
+    "guardrails",
+    "prompt-injection",
+    "pii",
+    "redaction",
+    "gdpr",
+    "secrets",
+    "security",
+    "wasm",
+    "edge",
+    "napi-rs"
+  ],
+  "author": "carlosmontanor",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjmont/llm-io-guard.git"
+  },
+  "os": [
+    "linux"
+  ],
+  "libc": [
+    "glibc"
+  ]
+}

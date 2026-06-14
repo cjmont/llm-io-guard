@@ -1,0 +1,18 @@
+[package]
+name = "llm-io-guard-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "WebAssembly (wasm-bindgen) binding for llm-io-guard."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+llm-io-guard-core = { path = "../llm-io-guard-core" }
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

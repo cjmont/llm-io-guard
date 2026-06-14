@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/llm-io-guard-core",
+    "crates/llm-io-guard-napi",
+    "crates/llm-io-guard-wasm",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["carlosmontanor"]
+repository = "https://github.com/cjmont/llm-io-guard"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+panic = "abort"
+strip = true

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>llm-io-guard — docs & examples</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font: 16px/1.6 system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; }
+      h1 { margin-bottom: 0; } .sub { color: #6b7280; margin-top: .25rem; }
+      pre { background: #1118; padding: 1rem; border-radius: 10px; overflow: auto; }
+      code { font-family: ui-monospace, monospace; }
+      .lang { display: flex; gap: .5rem; margin: 1rem 0; }
+      .lang button { padding: .4rem .8rem; border-radius: 8px; border: 1px solid #8884; cursor: pointer; background: transparent; }
+      .es { display: none; }
+      body.show-es .en { display: none; } body.show-es .es { display: block; }
+      table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #8884; padding: .4rem .6rem; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <h1>🛡️ llm-io-guard</h1>
+    <p class="sub en">Offline, in-process I/O safety for LLM apps — Rust core, Node + edge/WASM.</p>
+    <p class="sub es">Seguridad de E/S offline e in-process para apps con LLM — core en Rust, Node + edge/WASM.</p>
+
+    <div class="lang">
+      <button onclick="document.body.classList.remove('show-es')">🇬🇧 English</button>
+      <button onclick="document.body.classList.add('show-es')">🇪🇸 Español</button>
+    </div>
+
+    <section class="en">
+      <h2>Install</h2>
+      <pre><code>npm install llm-io-guard</code></pre>
+      <h2>Wrap one LLM call</h2>
+      <pre><code>import { Guard, piiRedact, promptInjection, secrets, piiRestore, secretLeak } from "llm-io-guard";
+
+const guard = new Guard({
+  input: [piiRedact(), promptInjection(), secrets()],
+  output: [piiRestore(), secretLeak()],
+  onViolation: "block",
+});
+
+const inp = await guard.scanInput(userText);     // PII → vault, no PII leaves your process
+if (!inp.allowed) throw new Error("unsafe input");
+const reply = await callYourLLM(inp.sanitized);  // send the redacted text
+const out = await guard.scanOutput(reply, { vault: inp.vault }); // restore real PII
+console.log(out.sanitized);</code></pre>
+      <p><strong>Defense-in-depth, not a guarantee.</strong> Heuristics have false
+      negatives; this complements (not replaces) least privilege and separating
+      instructions from data.</p>
+    </section>
+
+    <section class="es">
+      <h2>Instalación</h2>
+      <pre><code>npm install llm-io-guard</code></pre>
+      <h2>Envuelve una llamada al LLM</h2>
+      <pre><code>import { Guard, piiRedact, promptInjection, secrets, piiRestore, secretLeak } from "llm-io-guard";
+
+const guard = new Guard({
+  input: [piiRedact(), promptInjection(), secrets()],
+  output: [piiRestore(), secretLeak()],
+  onViolation: "block",
+});
+
+const inp = await guard.scanInput(textoDelUsuario);  // PII → vault, la PII no sale de tu proceso
+if (!inp.allowed) throw new Error("entrada insegura");
+const reply = await llamaATuLLM(inp.sanitized);      // manda el texto redactado
+const out = await guard.scanOutput(reply, { vault: inp.vault }); // restaura la PII real
+console.log(out.sanitized);</code></pre>
+      <p><strong>Defensa en capas, no una garantía.</strong> Las heurísticas tienen
+      falsos negativos; complementa (no reemplaza) el mínimo privilegio y la
+      separación de instrucciones y datos.</p>
+    </section>
+
+    <p>📦 <a href="https://www.npmjs.com/package/llm-io-guard">npm</a> ·
+       <a href="https://github.com/cjmont/llm-io-guard">GitHub</a></p>
+  </body>
+</html>
